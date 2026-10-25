@@ -15,7 +15,16 @@ namespace OrbitalDescent
         Transform sheath, sheathInner;
         Material sheathMat, sheathInnerMat, plumeMat, trailMat, streakMat, boltMat;
         readonly List<Transform> plumes = new List<Transform>();
-        TrailRenderer trail;
+        // Trail and bolt points are kept in the double-precision core frame and re-projected every
+        // frame, because the floating origin moves the whole world under the probe.
+        LineRenderer trail;
+        const int TrailPoints = 40;
+        const float TrailInterval = 0.06f;
+        readonly Vec3d[] trailCore = new Vec3d[TrailPoints];
+        readonly float[] trailAge = new float[TrailPoints];
+        int trailCount;
+        float trailTimer;
+        Vec3d[] boltCore;
         Mesh streakMesh;
         Transform streakRoot;
         LineRenderer bolt;
@@ -98,17 +107,18 @@ namespace OrbitalDescent
 
             // Ionised wake trail.
             trailMat = FxMat(fx, new Color(1f, 0.5f, 0.3f), 0f);
-            trail = p.gameObject.AddComponent<TrailRenderer>();
+            var tgo = new GameObject("Trail");
+            tgo.transform.SetParent(transform, false);
+            trail = tgo.AddComponent<LineRenderer>();
             trail.sharedMaterial = trailMat;
-            trail.time = 2.5f;
-            trail.minVertexDistance = r * 2f;
+            trail.useWorldSpace = true;
+            trail.positionCount = 0;
             trail.widthCurve = new AnimationCurve(new Keyframe(0, r * 1.6f), new Keyframe(1, r * 5f));
             trail.colorGradient = new Gradient
             {
                 colorKeys = new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
                 alphaKeys = new[] { new GradientAlphaKey(0.9f, 0), new GradientAlphaKey(0f, 1) },
             };
-            trail.emitting = false;
 
             // Speed streaks: camera-space quads recycled around the probe.
             streakRoot = new GameObject("Streaks").transform;
@@ -192,7 +202,7 @@ namespace OrbitalDescent
             }
 
             // ---- Trail ----
-            trail.emitting = plasma > 0.05f;
+            UpdateTrail(s.Position, plasma > 0.05f, dt);
             trailMat.SetFloat("_Intensity", plasma * 0.8f);
 
             // ---- Engine plumes: expand at low pressure (high altitude), flicker ----
@@ -221,6 +231,7 @@ namespace OrbitalDescent
                 boltTimer -= dt;
                 boltMat.SetFloat("_Intensity", Mathf.Clamp01(boltTimer / 0.25f) * 6f * (Mathf.Repeat(boltTimer * 30f, 1f) > 0.3f ? 1f : 0.4f));
                 if (boltTimer <= 0f) bolt.enabled = false;
+                else for (int i = 0; i < boltCore.Length; i++) bolt.SetPosition(i, WorldSpace.ToUnity(boltCore[i]));
             }
         }
 
@@ -259,6 +270,28 @@ namespace OrbitalDescent
             streakMat.SetFloat("_Intensity", 1.5f);
         }
 
+        void UpdateTrail(Vec3d probe, bool emitting, float dt)
+        {
+            for (int i = 0; i < trailCount; i++) trailAge[i] += dt;
+            // Drop points older than the trail lifetime.
+            while (trailCount > 0 && trailAge[trailCount - 1] > TrailPoints * TrailInterval) trailCount--;
+            trailTimer -= dt;
+            if (emitting && trailTimer <= 0f)
+            {
+                trailTimer = TrailInterval;
+                for (int i = Mathf.Min(trailCount, TrailPoints - 1); i > 0; i--) { trailCore[i] = trailCore[i - 1]; trailAge[i] = trailAge[i - 1]; }
+                trailCore[0] = probe;
+                trailAge[0] = 0f;
+                trailCount = Mathf.Min(trailCount + 1, TrailPoints);
+            }
+            if (!emitting && trailCount > 0) trailCount = Mathf.Max(0, trailCount - 1);
+            int n = trailCount > 0 ? trailCount + 1 : 0;
+            trail.positionCount = n;
+            if (n == 0) return;
+            trail.SetPosition(0, WorldSpace.ToUnity(probe));
+            for (int i = 0; i < trailCount; i++) trail.SetPosition(i + 1, WorldSpace.ToUnity(trailCore[i]));
+        }
+
         /// <summary>Draws a branching-looking bolt from cloud base to the probe.</summary>
         public void Strike(Vector3 probePos, Vector3 up)
         {
@@ -271,6 +304,8 @@ namespace OrbitalDescent
                     p += new Vector3((float)rng.NextDouble() - 0.5f, (float)rng.NextDouble() - 0.5f, (float)rng.NextDouble() - 0.5f) * 120f * Mathf.Sin(u * Mathf.PI);
                 bolt.SetPosition(i, p);
             }
+            boltCore = new Vec3d[bolt.positionCount];
+            for (int i = 0; i < boltCore.Length; i++) boltCore[i] = WorldSpace.ToCore(bolt.GetPosition(i));
             bolt.enabled = true;
             boltTimer = 0.45f;
         }
