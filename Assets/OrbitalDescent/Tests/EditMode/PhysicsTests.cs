@@ -278,8 +278,10 @@ namespace OrbitalDescent.Tests
         [Test]
         public void Contact_SoftTouchdownIsLanding()
         {
-            var m = new FlightModel(VehicleConfig.Dart, TestUtil.CalmWorld());
-            var s = m.CreateState(Planet.PointAbove(0, 0, 0.3), new Vec3d(0, -3, 0));
+            var world = TestUtil.CalmWorld();
+            var m = new FlightModel(VehicleConfig.Dart, world);
+            double ground = world.SurfaceHeight(0, 0, 0, out _);
+            var s = m.CreateState(Planet.PointAbove(0, 0, ground + VehicleConfig.Dart.GearHeight + 0.3), new Vec3d(0, -3, 0));
             TestUtil.RunToGround(m, s, null, FlightModel.DefaultStep, 10);
             Assert.AreEqual(ContactResult.Landed, s.ContactKind);
             Assert.AreEqual(Math.Sqrt(9 + 2 * Constants.G0 * 0.3), s.ContactSpeed, 0.1);

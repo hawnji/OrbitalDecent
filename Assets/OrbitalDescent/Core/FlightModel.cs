@@ -168,7 +168,7 @@ namespace OrbitalDescent.Core
 
             t.Altitude = alt;
             t.GroundHeight = ground;
-            t.AltitudeAboveGround = alt - ground;
+            t.AltitudeAboveGround = alt - ground - V.GearHeight; // landing feet above the surface
             t.Speed = s.Velocity.Length;
             t.AirSpeed = vAir;
             t.VerticalSpeed = Vec3d.Dot(s.Velocity, up);
@@ -368,18 +368,20 @@ namespace OrbitalDescent.Core
             double alt = Planet.Altitude(s.Position);
             Planet.Horizontal(s.Position, out double hx, out double hz);
             double ground = World.SurfaceHeight(hx, hz, s.Time, out SurfaceKind kind);
-            if (alt > ground) return;
+            double gear = kind == SurfaceKind.Water ? V.GearHeight * 0.3 : V.GearHeight;
+            if (alt > ground + gear) return;
             // Interpolate to the contact point between the previous and current positions.
             double prevAlt = Planet.Altitude(prevPos);
             Planet.Horizontal(prevPos, out double px, out double pz);
             double prevGround = World.SurfaceHeight(px, pz, s.Time, out _);
-            double a0 = prevAlt - prevGround, a1 = alt - ground;
+            double a0 = prevAlt - prevGround - gear, a1 = alt - ground - gear;
             double f = a0 - a1 > 1e-9 ? MathUtil.Clamp01(a0 / (a0 - a1)) : 1.0;
             Vec3d hit = prevPos + (s.Position - prevPos) * f;
             Planet.Horizontal(hit, out double cx, out double cz);
             Vec3d rel = s.Velocity - (kind == SurfaceKind.Deck ? World.ZoneVelocity : Vec3d.Zero);
-            s.ContactPoint = Planet.PointAbove(cx, cz, World.SurfaceHeight(cx, cz, s.Time, out _));
-            s.Position = s.ContactPoint;
+            double groundAtHit = World.SurfaceHeight(cx, cz, s.Time, out _);
+            s.ContactPoint = Planet.PointAbove(cx, cz, groundAtHit);
+            s.Position = Planet.PointAbove(cx, cz, groundAtHit + gear);
             s.ContactSpeed = rel.Length;
             Vec3d upC = Planet.Up(s.ContactPoint);
             s.ContactVerticalSpeed = -Vec3d.Dot(rel, upC);

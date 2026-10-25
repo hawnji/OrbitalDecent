@@ -44,6 +44,16 @@ namespace OrbitalDescent.Core
             return c;
         }
 
+        /// <summary>Two rotated scales of the coverage map (breaks visible tiling). Mirrors RawCoverage in
+        /// ODAtmosphereCore.hlsl.</summary>
+        public double RawCoverage(double x, double z)
+        {
+            double a = Coverage.Sample(x / CoverageTile, z / CoverageTile);
+            double rx = x * 0.8 - z * 0.6, rz = x * 0.6 + z * 0.8;
+            double b = Coverage.Sample(rx / (CoverageTile * 4.37) + 0.31, rz / (CoverageTile * 4.37) + 0.67);
+            return MathUtil.Clamp01(0.5 + (0.55 * a + 0.45 * b - 0.5) * 1.35);
+        }
+
         /// <summary>Cloud density at a local horizontal position and altitude, time t (s).</summary>
         public double Density(double x, double z, double altitude, double t)
         {
@@ -60,7 +70,7 @@ namespace OrbitalDescent.Core
                 }
                 else
                 {
-                    double raw = Coverage.Sample((x - driftX) / CoverageTile, (z - driftZ) / CoverageTile);
+                    double raw = RawCoverage(x - driftX, z - driftZ);
                     cov = MathUtil.Clamp01((raw - (1.0 - layer.Coverage)) / Math.Max(0.05, layer.Coverage) * 1.5);
                 }
                 double baseShape = cov * HeightProfile(layer.Type, h);

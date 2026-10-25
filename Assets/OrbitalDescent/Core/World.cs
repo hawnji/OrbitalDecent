@@ -12,6 +12,7 @@ namespace OrbitalDescent.Core
     {
         public const double PatchRadius = 42000.0;
         public const double PadRadius = 60.0;
+        public const double PadThickness = 0.4; // raised concrete pad, m
         readonly LevelDefinition L;
 
         public TerrainField(LevelDefinition level) { L = level; }
@@ -78,6 +79,7 @@ namespace OrbitalDescent.Core
         {
             double h = Terrain.Height(x, z);
             kind = SurfaceKind.Ground;
+            if (!Level.Ocean && x * x + z * z < TerrainField.PadRadius * TerrainField.PadRadius) h += TerrainField.PadThickness;
             if (Level.Ocean && h < 0) { h = 0; kind = SurfaceKind.Water; }
             if (Level.HasPlatform)
             {

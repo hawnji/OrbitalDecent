@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compile-only check of the Unity runtime and editor scripts outside the Unity editor.
+       References Unity 2021.1 reference assemblies from NuGet (Unity3D.SDK) plus minimal uGUI
+       stubs (Stubs/UGuiStubs.cs). This catches C# and API errors; it is not a substitute for
+       opening the project in Unity 6. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>UNITY_EDITOR;UNITY_ANDROID;ENABLE_LEGACY_INPUT_MANAGER;UNITY_2021_1_OR_NEWER</DefineConstants>
+    <NoWarn>CS0618;CS0649;CS0414</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/OrbitalDescent/Core/**/*.cs" />
+    <Compile Include="../../Assets/OrbitalDescent/Runtime/**/*.cs" />
+    <Compile Include="../../Assets/OrbitalDescent/Editor/**/*.cs" />
+    <Compile Include="Stubs/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Unity3D.SDK" Version="2021.1.14.1" />
+  </ItemGroup>
+</Project>

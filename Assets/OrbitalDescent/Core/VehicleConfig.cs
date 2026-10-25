@@ -44,6 +44,7 @@ namespace OrbitalDescent.Core
         public double MaxGLoad;           // g before structural damage
         public double MaxTouchdownSpeed;  // m/s survivable impact
         public double MaxIceFraction = 0.06;
+        public double GearHeight = 0.5;   // m from landing feet to centre of mass
 
         // ---- Gameplay abstractions ----
         public double GuidanceReliability; // 0..1, shortens electronic disruptions
@@ -56,6 +57,7 @@ namespace OrbitalDescent.Core
 
         public static readonly VehicleConfig Dart = new VehicleConfig
         {
+            GearHeight = 0.48,
             Id = "dart", Name = "Dart", Tagline = "Light, nimble capsule. Wind pushes it around.",
             DryMass = 230, FuelMass = 45, RefArea = 0.785, RefLength = 1.2,
             AxialCoeff = 1.15, NormalSlope = -0.25, CrossflowCoeff = 1.2, StabilityCoeff = 0.10, PitchDampCoeff = 0.6,
@@ -67,6 +69,7 @@ namespace OrbitalDescent.Core
 
         public static readonly VehicleConfig Hammer = new VehicleConfig
         {
+            GearHeight = 0.8,
             Id = "hammer", Name = "Hammer", Tagline = "Heavy and fast. Plan early; it turns slowly.",
             DryMass = 1100, FuelMass = 150, RefArea = 1.54, RefLength = 2.2,
             AxialCoeff = 1.05, NormalSlope = -0.2, CrossflowCoeff = 1.2, StabilityCoeff = 0.15, PitchDampCoeff = 0.8,
@@ -78,6 +81,7 @@ namespace OrbitalDescent.Core
 
         public static readonly VehicleConfig Phantom = new VehicleConfig
         {
+            GearHeight = 0.55,
             Id = "phantom", Name = "Phantom", Tagline = "Precision lander with a short boost reserve.",
             DryMass = 480, FuelMass = 75, RefArea = 1.0, RefLength = 1.6,
             AxialCoeff = 1.1, NormalSlope = -0.3, CrossflowCoeff = 1.2, StabilityCoeff = 0.12, PitchDampCoeff = 0.75,
@@ -89,6 +93,7 @@ namespace OrbitalDescent.Core
 
         public static readonly VehicleConfig Wildcard = new VehicleConfig
         {
+            GearHeight = 1.3,
             Id = "wildcard", Name = "Wildcard", Tagline = "Biconic lifting body. Huge cross-range, twitchy.",
             DryMass = 600, FuelMass = 60, RefArea = 1.2, RefLength = 3.0,
             AxialCoeff = 0.85, NormalSlope = -1.3, CrossflowCoeff = 1.0, StabilityCoeff = 0.03, PitchDampCoeff = 0.25,
