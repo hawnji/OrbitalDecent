@@ -9,6 +9,7 @@ using OrbitalDescent.Core;
 //   dotnet run -- simulate <levelIndex> [vehicleId]     autopilot run with a telemetry trace
 //   dotnet run -- campaign                               autopilot run of every level, summary table
 //   dotnet run -- export <outDir>                        noise volumes + level weather JSON for tools/ShaderPreview
+//   dotnet run -- bench                                  cost of one simulation step and one predictor step
 static class Program
 {
     static int Main(string[] args)
@@ -28,12 +29,42 @@ static class Program
                     foreach (var v in VehicleConfig.All)
                         Simulate(l, v.Id, shape, cov, false);
                 return 0;
+            case "bench":
+                Bench(shape, cov);
+                return 0;
             case "export":
                 Export(args.Length > 1 ? args[1] : "out", shape, cov);
                 return 0;
         }
         Console.Error.WriteLine("unknown command");
         return 1;
+    }
+
+    /// <summary>Times FlightModel steps in full (hazard-free) and predictor (deterministic) mode on a
+    /// cloudy level, so the per-frame CPU budget on phones can be estimated from desktop numbers.</summary>
+    static void Bench(NoiseVolume shape, NoiseMap cov)
+    {
+        var lvl = Levels.All[3];
+        var world = new World(lvl, shape, cov);
+        foreach (bool det in new[] { false, true })
+        {
+            var model = new FlightModel(VehicleConfig.Dart, world) { Deterministic = det };
+            var s = model.CreateState(Planet.PointAbove(-3000, -2000, 6000), new Vec3d(40, -160, 30));
+            var input = new ControlInput { Sas = true };
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            int n = 0;
+            while (sw.ElapsedMilliseconds < 1500)
+            {
+                for (int i = 0; i < 200; i++, n++)
+                {
+                    model.Step(s, input, ControlModifiers.Nominal, FlightModel.DefaultStep);
+                    if (s.Contact || Planet.Altitude(s.Position) < 2500)
+                        s = model.CreateState(Planet.PointAbove(-3000, -2000, 6000), new Vec3d(40, -160, 30));
+                }
+            }
+            double us = sw.Elapsed.TotalMilliseconds * 1000.0 / n;
+            Console.WriteLine($"{(det ? "predictor step" : "simulation step"),-16} {us,6:F2} us  ({1e6 / us:F0} steps/s)");
+        }
     }
 
     static void Simulate(LevelDefinition lvl, string vehicleId, NoiseVolume shape, NoiseMap cov, bool trace)

@@ -185,6 +185,7 @@ namespace OrbitalDescent
             if (fx != null) Destroy(fx.gameObject);
             session = new MissionSession(level, vehicle, noise.Shape, noise.Coverage, settings.Difficulty);
             session.LightningStrike += OnStrike;
+            session.PredictionStepsPerTick = quality.PredictionSteps;
             // Terrain is rebuilt only when the level or detail level changes, so retries are instant.
             if (terrain == null || terrainLevel != level.Index || terrainQuality != settings.Quality)
             {

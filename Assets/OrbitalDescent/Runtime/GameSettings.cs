@@ -93,17 +93,18 @@ namespace OrbitalDescent
         public bool CloudShadows;
         public int TargetFrameRate;
         public int Antialiasing;        // MSAA samples
+        public int PredictionSteps;     // trajectory predictor steps per frame (CPU budget)
 
         public static QualityProfile For(QualityTier t)
         {
             switch (t)
             {
                 case QualityTier.Low:
-                    return new QualityProfile { RenderScale = 0.7f, CloudDownsample = 4, CloudSteps = 20, CloudLightSteps = 2, AtmosphereSteps = 6, TerrainResolution = 161, CloudShadows = false, TargetFrameRate = 30, Antialiasing = 1 };
+                    return new QualityProfile { RenderScale = 0.7f, CloudDownsample = 4, CloudSteps = 20, CloudLightSteps = 2, AtmosphereSteps = 6, TerrainResolution = 161, CloudShadows = false, TargetFrameRate = 30, Antialiasing = 1, PredictionSteps = 100 };
                 case QualityTier.High:
-                    return new QualityProfile { RenderScale = 1.0f, CloudDownsample = 2, CloudSteps = 56, CloudLightSteps = 5, AtmosphereSteps = 12, TerrainResolution = 255, CloudShadows = true, TargetFrameRate = 60, Antialiasing = 4 };
+                    return new QualityProfile { RenderScale = 1.0f, CloudDownsample = 2, CloudSteps = 56, CloudLightSteps = 5, AtmosphereSteps = 12, TerrainResolution = 255, CloudShadows = true, TargetFrameRate = 60, Antialiasing = 4, PredictionSteps = 260 };
                 default:
-                    return new QualityProfile { RenderScale = 0.85f, CloudDownsample = 2, CloudSteps = 32, CloudLightSteps = 3, AtmosphereSteps = 8, TerrainResolution = 201, CloudShadows = true, TargetFrameRate = 60, Antialiasing = 2 };
+                    return new QualityProfile { RenderScale = 0.85f, CloudDownsample = 2, CloudSteps = 32, CloudLightSteps = 3, AtmosphereSteps = 8, TerrainResolution = 201, CloudShadows = true, TargetFrameRate = 60, Antialiasing = 2, PredictionSteps = 150 };
             }
         }
     }
