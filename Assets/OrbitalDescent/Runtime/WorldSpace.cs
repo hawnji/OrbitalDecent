@@ -36,6 +36,6 @@ namespace OrbitalDescent
         // Late-morning sun, from the south-east, ~35 degrees elevation.
         public static readonly Vector3 Direction = new Vector3(0.45f, 0.58f, -0.68f).normalized;
         public static readonly Color Color = new Color(1.0f, 0.97f, 0.92f);
-        public const float Intensity = 18f;
+        public const float Intensity = 20f;
     }
 }

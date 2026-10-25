@@ -2,6 +2,7 @@
 // compile check can run without the Unity editor. Bodies are empty; Unity uses the real package.
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace UnityEngine.UI
 {
@@ -98,4 +99,68 @@ namespace UnityEngine.UI
     }
 
     public class Outline : Shadow { }
+
+    public struct ColorBlock
+    {
+        public Color normalColor { get; set; }
+        public Color highlightedColor { get; set; }
+        public Color pressedColor { get; set; }
+        public Color selectedColor { get; set; }
+        public Color disabledColor { get; set; }
+        public float colorMultiplier { get; set; }
+        public float fadeDuration { get; set; }
+    }
+
+    public class Selectable : UIBehaviour
+    {
+        public Graphic targetGraphic { get; set; }
+        public bool interactable { get; set; }
+        public ColorBlock colors { get; set; }
+    }
+
+    public class Button : Selectable
+    {
+        public class ButtonClickedEvent : UnityEvent { }
+        public ButtonClickedEvent onClick { get; set; } = new ButtonClickedEvent();
+    }
+
+    public class Slider : Selectable
+    {
+        public class SliderEvent : UnityEvent<float> { }
+        public RectTransform fillRect { get; set; }
+        public RectTransform handleRect { get; set; }
+        public float minValue { get; set; }
+        public float maxValue { get; set; }
+        public bool wholeNumbers { get; set; }
+        public float value { get; set; }
+        public SliderEvent onValueChanged { get; set; } = new SliderEvent();
+    }
+
+    public class Toggle : Selectable
+    {
+        public class ToggleEvent : UnityEvent<bool> { }
+        public Graphic graphic { get; set; }
+        public bool isOn { get; set; }
+        public ToggleEvent onValueChanged { get; set; } = new ToggleEvent();
+    }
+}
+
+namespace UnityEngine.EventSystems
+{
+    public class UIBehaviourBase : MonoBehaviour { }
+    public class EventSystem : MonoBehaviour { public static EventSystem current { get; set; } }
+    public abstract class BaseInputModule : MonoBehaviour { }
+    public class StandaloneInputModule : BaseInputModule { }
+    public class BaseEventData { }
+    public class PointerEventData : BaseEventData
+    {
+        public Vector2 position { get; set; }
+        public int pointerId { get; set; }
+        public Camera pressEventCamera => null;
+    }
+    public interface IEventSystemHandler { }
+    public interface IPointerDownHandler : IEventSystemHandler { void OnPointerDown(PointerEventData eventData); }
+    public interface IPointerUpHandler : IEventSystemHandler { void OnPointerUp(PointerEventData eventData); }
+    public interface IPointerExitHandler : IEventSystemHandler { void OnPointerExit(PointerEventData eventData); }
+    public interface IDragHandler : IEventSystemHandler { void OnDrag(PointerEventData eventData); }
 }
