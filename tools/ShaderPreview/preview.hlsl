@@ -24,8 +24,9 @@ float4 main(float4 pos : SV_Position) : SV_Target
     float jitter = frac(sin(dot(pos.xy, float2(12.9898, 78.233))) * 43758.5453);
     if (_Debug > 0.5 && _Debug < 1.5) return float4(g.x > 0.0 ? g.x / 1e6 : 0.0, g.x > 0.0 ? 0.0 : 1.0, isnan(g.x) ? 1.0 : 0.0, 1);
     if (_Debug > 1.5 && _Debug < 2.5) { AtmoResult a = IntegrateAtmosphere(dir, tMax, _AtmoSteps); float3 v = a.inscatter; return float4(isnan(v.x) ? 1.0 : saturate(v.x), saturate(a.transmittance.y), isnan(a.transmittance.x) ? 1.0 : 0.0, 1); }
-    if (_Debug > 3.5) { float3 v = g.x > 0.0 ? ShadeFarGround(_CamLocal + dir * g.x, dir) : float3(0, 0, 0); return float4(isnan(v.x) ? 1.0 : saturate(v.x * 5.0), saturate(v.y * 5.0), isnan(v.y) ? 1.0 : 0.0, 1); }
+    if (_Debug > 3.5 && _Debug < 4.5) { float3 v = g.x > 0.0 ? ShadeFarGround(_CamLocal + dir * g.x, dir) : float3(0, 0, 0); return float4(isnan(v.x) ? 1.0 : saturate(v.x * 5.0), saturate(v.y * 5.0), isnan(v.y) ? 1.0 : 0.0, 1); }
     float4 cloud = CloudPass(dir, tMax, jitter);
+    if (_Debug > 4.5) return float4(cloud.rgb * (_Debug - 4.0) * 0.1, 1);
     if (_Debug > 2.5) return float4(isnan(cloud.a) ? 1.0 : cloud.a, isnan(cloud.r) ? 1.0 : 0.0, 0, 1);
     float3 col = CompositeView(dir, 0.0, 0.0, float3(0, 0, 0), cloud);
     col = TonemapACES(col);

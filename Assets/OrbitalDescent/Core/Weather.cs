@@ -32,17 +32,21 @@ namespace OrbitalDescent.Core
             }
         }
 
-        public double StormCoverage(double x, double z)
+        public double StormCoverage(double x, double z, double radiusScale = 1.0)
         {
             double c = 0;
             foreach (var s in Level.Storms)
             {
                 double dx = x - s.X, dz = z - s.Z;
                 double d = Math.Sqrt(dx * dx + dz * dz);
-                c = Math.Max(c, s.Strength * (1.0 - MathUtil.SmoothStep(s.Radius * 0.35, s.Radius, d)));
+                double r = s.Radius * radiusScale;
+                c = Math.Max(c, s.Strength * (1.0 - MathUtil.SmoothStep(r * 0.35, r, d)));
             }
             return c;
         }
+
+        /// <summary>Storm towers narrow toward the base and spread into an anvil near the top.</summary>
+        public static double StormRadiusScale(double h) => 0.7 + 0.3 * h + 0.9 * MathUtil.SmoothStep(0.7, 0.95, h);
 
         /// <summary>Two rotated scales of the coverage map (breaks visible tiling). Mirrors RawCoverage in
         /// ODAtmosphereCore.hlsl.</summary>
@@ -66,7 +70,8 @@ namespace OrbitalDescent.Core
                 double cov;
                 if (layer.Type == CloudType.Storm)
                 {
-                    cov = StormCoverage(x - driftX, z - driftZ);
+                    cov = StormCoverage(x - driftX, z - driftZ, StormRadiusScale(h)) *
+                          (0.55 + 0.45 * RawCoverage(x - driftX, z - driftZ));
                 }
                 else
                 {

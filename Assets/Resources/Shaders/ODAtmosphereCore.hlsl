@@ -202,13 +202,13 @@ float3 GroundAlbedo(float2 horiz, float height, float slope, float ocean)
 {
     float2 uv = horiz / (_CoverageTile * 11.0);
     float large = OD_SAMPLE2D(_CloudCoverageTex, uv + float2(0.37, 0.71)).r;
-    float detail = OD_SAMPLE2D(_CloudCoverageTex, horiz / 2300.0).r;
+    float detail = OD_SAMPLE2D(_CloudCoverageTex, float2(horiz.x * 0.6 - horiz.y * 0.8, horiz.x * 0.8 + horiz.y * 0.6) / 7300.0).r;
     float3 grass = lerp(float3(0.085, 0.11, 0.045), float3(0.15, 0.15, 0.07), large);
     float3 dry = float3(0.22, 0.19, 0.13);
     float3 rock = float3(0.17, 0.16, 0.15);
     float3 snow = float3(0.8, 0.82, 0.86);
     float3 c = lerp(grass, dry, saturate((large - 0.55) * 4.0));
-    c *= 0.8 + 0.4 * detail;
+    c *= 0.88 + 0.24 * detail;
     c = lerp(c, rock, saturate((slope - 0.12) * 5.0));
     c = lerp(c, snow, saturate((height - 2200.0) / 400.0) * saturate(1.0 - slope * 2.0));
     // Far-field seas on land levels: low-frequency mask.
@@ -233,7 +233,7 @@ float SmoothStepF(float a, float b, float x)
     return t * t * (3.0 - 2.0 * t);
 }
 
-float StormCoverage(float2 xz)
+float StormCoverage(float2 xz, float radiusScale)
 {
     float c = 0.0;
     [unroll]
@@ -243,7 +243,8 @@ float StormCoverage(float2 xz)
         {
             float4 s = _StormCells[i];
             float d = length(xz - s.xy);
-            c = max(c, s.w * (1.0 - SmoothStepF(s.z * 0.35, s.z, d)));
+            float r = s.z * radiusScale;
+            c = max(c, s.w * (1.0 - SmoothStepF(r * 0.35, r, d)));
         }
     }
     return c;
@@ -275,7 +276,7 @@ float CloudDensity(float3 p, float alt, float lod)
             {
                 float h = (alt - A.x) / (A.y - A.x);
                 float cov;
-                if (B.x > 2.5) cov = StormCoverage(xz);
+                if (B.x > 2.5) cov = StormCoverage(xz, 0.7 + 0.3 * h + 0.9 * SmoothStepF(0.7, 0.95, h)) * (0.55 + 0.45 * RawCoverage(xz));
                 else
                 {
                     float raw = RawCoverage(xz);
@@ -333,12 +334,13 @@ CloudResult MarchClouds(float3 dir, float tMax, float jitter)
     tEnd = min(tEnd, tMax);
     if (tEnd <= tStart) return res;
 
-    const float kMaxMarch = 60000.0;
+    const float kMaxMarch = 160000.0;
     float marchEnd = min(tEnd, tStart + kMaxMarch);
     float n = max(_CloudSteps, 4.0);
     float stepScale = 48.0 / n;
     float muSun = dot(dir, _SunDir);
-    float phase = lerp(PhaseHG(muSun, 0.6), PhaseHG(muSun, -0.25), 0.25) * 4.0 * OD_PI;
+    // Phase in 1/sr times a multiple-scattering boost; keeps lit cloud a few times brighter than sky.
+    float phase = lerp(PhaseHG(muSun, 0.6), PhaseHG(muSun, -0.25), 0.3) * 2.2;
     float camCloudAlt = clamp(_CamAlt, _CloudBandMin, _CloudBandMax);
     float3 sunCol = SunTransmittance(camCloudAlt, dot(_CamUp, _SunDir)) * _SunIntensity;
     float3 amb = SkyAmbient(camCloudAlt) * 1.4;
@@ -354,8 +356,10 @@ CloudResult MarchClouds(float3 dir, float tMax, float jitter)
     for (i = 0.0; i < n; i += 1.0)
     {
         if (res.transmittance < 0.01 || t > marchEnd) break;
-        ds = clamp(t * 0.012, 35.0, 900.0) * stepScale;
-        float lod = saturate((ds - 120.0) / 500.0);
+        // Never take fewer steps than needed to reach the end of the band within the step budget.
+        ds = max(clamp(t * 0.012, 35.0, 900.0) * stepScale, (marchEnd - t) / max(1.0, n - i));
+        // Fade 3D detail with distance: one noise texel subtends less than a pixel beyond ~10 km.
+        float lod = saturate((t - 6000.0) / 22000.0);
         float3 p = _CamLocal + dir * t;
         float alt = AltitudeLocal(p);
         float d = CloudDensity(p, alt, lod);
@@ -373,10 +377,11 @@ CloudResult MarchClouds(float3 dir, float tMax, float jitter)
                 od += CloudDensity(lp, AltitudeLocal(lp), max(lod, 0.5)) * ls;
                 ls *= 2.4;
             }
-            float sunVis = exp(-od * _ExtinctionScale);
+            // Two-lobe transmittance approximates multiple scattering (light leaks deeper into the cloud).
+            float sunVis = max(exp(-od * _ExtinctionScale * 0.35), exp(-od * _ExtinctionScale * 0.08) * 0.35);
             float powder = 1.0 - exp(-ext * 2.0 * 160.0);
             float hFrac = saturate((alt - _CloudBandMin) / max(1.0, _CloudBandMax - _CloudBandMin));
-            float3 light = sunCol * sunVis * phase * lerp(0.6, 1.0, powder) + amb * (0.45 + 0.55 * hFrac);
+            float3 light = sunCol * sunVis * phase * lerp(0.5, 1.0, powder) + amb * (0.2 + 0.6 * hFrac);
             // Lightning lights the cloud from inside.
             float fl = _Flash.w / (1.0 + dot(p - _Flash.xyz, p - _Flash.xyz) * 2e-6);
             light += float3(0.75, 0.8, 1.0) * fl;
@@ -395,13 +400,15 @@ CloudResult MarchClouds(float3 dir, float tMax, float jitter)
         float remain = tEnd - t;
         float segs = 6.0;
         float sl = remain / segs;
-        float3 light = sunCol * 0.35 + amb;
         [loop]
         for (float k = 0.0; k < segs; k += 1.0)
         {
             float tm = t + sl * (k + 0.5);
             float3 p = _CamLocal + dir * tm;
-            float d = CloudDensity(p, AltitudeLocal(p), 1.0);
+            float alt = AltitudeLocal(p);
+            float d = CloudDensity(p, alt, 1.0);
+            float hFrac = saturate((alt - _CloudBandMin) / max(1.0, _CloudBandMax - _CloudBandMin));
+            float3 light = sunCol * phase * lerp(0.15, 0.8, hFrac) + amb * (0.2 + 0.6 * hFrac);
             float slab = exp(-d * _ExtinctionScale * sl * 0.35);
             res.scatter += res.transmittance * light * (1.0 - slab);
             float w = res.transmittance * (1.0 - slab);
